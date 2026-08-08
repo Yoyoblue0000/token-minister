@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-08-08T04:00:00Z",
+  "providers": [
+    {
+      "id": "opencode",
+      "base_provider": "opencode",
+      "label": "OpenCode",
+      "quotas": [
+        { "key": "five_hour", "percent": 25, "reset_at": "2026-08-08T08:00:00Z", "time_until_reset": "4h", "age_seconds": 10, "is_stale": false },
+        { "key": "weekly", "percent": 40, "reset_at": "2026-08-12T00:00:00Z", "time_until_reset": "4d", "age_seconds": 10, "is_stale": false },
+        { "key": "monthly", "percent": 60, "reset_at": "2026-09-01T00:00:00Z", "time_until_reset": "24d", "age_seconds": 10, "is_stale": false }
+      ]
+    }
+  ]
+}
