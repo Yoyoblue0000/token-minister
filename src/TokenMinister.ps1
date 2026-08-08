@@ -288,6 +288,9 @@ function Get-TMText {
         'Waiting'           { @(0x7B49, 0x5F85, 0x6570, 0x636E) }
         'ResetIn'           { @(0x540E, 0x91CD, 0x7F6E) }
         'Resetting'         { @(0x5373, 0x5C06, 0x91CD, 0x7F6E) }
+        'Today'             { @(0x4ECA, 0x5929) }
+        'Tomorrow'          { @(0x660E, 0x5929) }
+        'ResetAt'           { @(0x91CD, 0x7F6E) }
         'ShowHide'          { @(0x663E, 0x793A, 0x002F, 0x9690, 0x85CF) }
         'ReadNow'           { @(0x7ACB, 0x5373, 0x91CD, 0x8BFB) }
         'AlwaysOnTop'       { @(0x59CB, 0x7EC8, 0x7F6E, 0x9876) }
@@ -342,6 +345,25 @@ function Test-TMSummaryAvailable {
     catch {
         return $false
     }
+}
+
+function ConvertTo-TMResetTime {
+    param([AllowNull()][string]$ResetAt)
+
+    $parsed = [DateTimeOffset]::MinValue
+    if ([string]::IsNullOrWhiteSpace($ResetAt) -or -not [DateTimeOffset]::TryParse($ResetAt, [ref]$parsed)) {
+        return $null
+    }
+    $local = $parsed.ToLocalTime()
+    $today = [DateTimeOffset]::Now.Date
+    $timeText = ('{0}:{1:D2}' -f $local.Hour, $local.Minute)
+    if ($local.Date -eq $today) {
+        return ('{0} {1} {2}' -f (Get-TMText 'Today'), $timeText, (Get-TMText 'ResetAt'))
+    }
+    if ($local.Date -eq $today.AddDays(1)) {
+        return ('{0} {1} {2}' -f (Get-TMText 'Tomorrow'), $timeText, (Get-TMText 'ResetAt'))
+    }
+    return ('{0}{1}{2}{3} {4} {5}' -f $local.Month, [char]0x6708, $local.Day, [char]0x65E5, $timeText, (Get-TMText 'ResetAt'))
 }
 
 function ConvertTo-TMCountdown {
@@ -446,8 +468,12 @@ function Update-TMRow {
     $rounded = [Math]::Round([double]$Item.RemainingPercent, 1)
     $percentText.Text = ('{0:g}%' -f $rounded)
     $progress.Value = $rounded
-    $countdown = ConvertTo-TMCountdown -ResetAt $Item.ResetAt -Fallback $Item.TimeUntilReset
-    $row.ToolTip = ('{0} · {1}% · {2} {3}' -f $label, ('{0:g}' -f $rounded), $countdown, (Get-TMText 'ResetIn'))
+    $resetText = ConvertTo-TMResetTime -ResetAt $Item.ResetAt
+    if ([string]::IsNullOrWhiteSpace($resetText)) {
+        $countdown = ConvertTo-TMCountdown -ResetAt $Item.ResetAt -Fallback $Item.TimeUntilReset
+        $resetText = ('{0} {1}' -f $countdown, (Get-TMText 'ResetIn'))
+    }
+    $row.ToolTip = $resetText
 }
 
 function Update-TMWindow {
