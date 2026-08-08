@@ -131,7 +131,11 @@ $mainXaml = @'
   </Window.Resources>
 
   <Border x:Name="MainCard" Background="#F2FFFFFF" BorderThickness="0"
-          CornerRadius="16" Padding="8">
+          CornerRadius="16" Padding="8" Margin="10">
+    <Border.Effect>
+      <DropShadowEffect Color="#172033" BlurRadius="8" ShadowDepth="1.5" Direction="270"
+                        Opacity="0.28" RenderingBias="Quality"/>
+    </Border.Effect>
     <Grid>
       <Grid.RowDefinitions>
         <RowDefinition Height="24"/>
@@ -374,8 +378,8 @@ function Save-TMRuntimeSettings {
     }
     $script:settings.WindowLeft = [double]$script:window.Left
     $script:settings.WindowTop = [double]$script:window.Top
-    $script:settings.WindowWidth = [double]$script:window.ActualWidth
-    $script:settings.WindowHeight = [double]$script:window.ActualHeight
+    $script:settings.WindowWidth = [double]$script:window.ActualWidth - 20
+    $script:settings.WindowHeight = [double]$script:window.ActualHeight - 20
     $script:settings.AlwaysOnTop = [bool]$script:window.Topmost
     Save-TMSettings -Path $settingsPath -Settings $script:settings
     $script:runtime.SettingsDirty = $false
@@ -680,8 +684,8 @@ try {
 
     $area = [Windows.Forms.Screen]::PrimaryScreen.WorkingArea
     $windowSize = Resolve-TMWindowSize -Settings $script:settings -WorkingArea $area
-    $script:window.Width = $windowSize.Width
-    $script:window.Height = $windowSize.Height
+    $script:window.Width = $windowSize.Width + 20
+    $script:window.Height = $windowSize.Height + 20
     $script:window.Topmost = [bool]$script:settings.AlwaysOnTop
     Update-TMPinButton
 
