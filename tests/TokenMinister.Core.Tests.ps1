@@ -331,16 +331,16 @@ Describe 'TokenMinister settings' {
         $loaded.WorkspaceId | Should Be 'legacy'
         $loaded.WindowLeft | Should Be 12
         $loaded.WindowTop | Should Be 34
-        $loaded.WindowWidth | Should Be 208
-        $loaded.WindowHeight | Should Be 118
+        $loaded.WindowWidth | Should Be 251
+        $loaded.WindowHeight | Should Be 166
         $loaded.AlwaysOnTop | Should Be $true
     }
 
     It 'uses compact defaults when no settings file exists' {
         $loaded = Read-TMSettings -Path (Join-Path $TestDrive 'missing-settings.json')
 
-        $loaded.WindowWidth | Should Be 208
-        $loaded.WindowHeight | Should Be 118
+        $loaded.WindowWidth | Should Be 251
+        $loaded.WindowHeight | Should Be 166
         $loaded.AlwaysOnTop | Should Be $true
     }
 }
@@ -382,8 +382,8 @@ Describe 'TokenMinister window sizing' {
 
         $size = Resolve-TMWindowSize -Settings $settings -WorkingArea $area
 
-        $size.Width | Should Be 208
-        $size.Height | Should Be 118
+        $size.Width | Should Be 251
+        $size.Height | Should Be 166
     }
 }
 

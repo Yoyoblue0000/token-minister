@@ -16,6 +16,37 @@ Add-Type -AssemblyName WindowsBase
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public struct TM_AccentPolicy {
+    public int AccentState;
+    public int AccentFlags;
+    public int GradientColor;
+    public int AnimationId;
+}
+public struct TM_WindowCompositionAttributeData {
+    public int Attribute;
+    public IntPtr Data;
+    public int SizeOfData;
+}
+public static class TM_Native {
+    [DllImport("user32.dll")]
+    public static extern int SetWindowCompositionAttribute(IntPtr hwnd, ref TM_WindowCompositionAttributeData data);
+    [DllImport("shcore.dll")]
+    public static extern int SetProcessDpiAwareness(int value);
+    [DllImport("user32.dll")]
+    public static extern bool SetProcessDPIAware();
+}
+'@
+
+try {
+    [TM_Native]::SetProcessDpiAwareness(2) | Out-Null
+}
+catch {
+    [void][TM_Native]::SetProcessDPIAware()
+}
+
 Import-Module (Join-Path $PSScriptRoot 'TokenMinister.Core.psm1') -Force
 
 if ([string]::IsNullOrWhiteSpace($BackendPath)) {
@@ -30,28 +61,25 @@ $mainXaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        Title="TokenMinister" Width="208" Height="118" MinWidth="192" MinHeight="108"
-        WindowStyle="None" Background="#FAFBFD" Opacity="0.96"
-        ResizeMode="CanResize" Topmost="True" ShowInTaskbar="False"
-        SnapsToDevicePixels="True" UseLayoutRounding="True"
+        Title="TokenMinister" Width="251" Height="166" MinWidth="192" MinHeight="108"
+        WindowStyle="None" Background="#00000000" Opacity="1"
+        ResizeMode="CanResizeWithGrip" Topmost="True" ShowInTaskbar="False"
+        AllowsTransparency="True" SnapsToDevicePixels="True" UseLayoutRounding="True"
         TextOptions.TextFormattingMode="Display">
-  <shell:WindowChrome.WindowChrome>
-    <shell:WindowChrome ResizeBorderThickness="6" CaptionHeight="0" GlassFrameThickness="0"
-                        CornerRadius="12" UseAeroCaptionButtons="False"/>
-  </shell:WindowChrome.WindowChrome>
   <Window.Resources>
     <Style x:Key="ThinProgressStyle" TargetType="{x:Type ProgressBar}">
-      <Setter Property="Height" Value="3"/>
-      <Setter Property="Background" Value="#E7ECF3"/>
-      <Setter Property="Foreground" Value="#3478F6"/>
+      <Setter Property="Height" Value="15"/>
+      <Setter Property="MinHeight" Value="0"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+      <Setter Property="Background" Value="#241C2030"/>
       <Setter Property="BorderThickness" Value="0"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="{x:Type ProgressBar}">
             <Grid x:Name="PART_Track" SnapsToDevicePixels="True">
-              <Border Background="{TemplateBinding Background}" CornerRadius="1.5"/>
+              <Border Background="{TemplateBinding Background}" CornerRadius="8"/>
               <Border x:Name="PART_Indicator" Background="{TemplateBinding Foreground}"
-                      CornerRadius="1.5" HorizontalAlignment="Left"/>
+                      CornerRadius="8" HorizontalAlignment="Left"/>
             </Grid>
           </ControlTemplate>
         </Setter.Value>
@@ -62,13 +90,6 @@ $mainXaml = @'
       <Setter Property="FontSize" Value="11"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
       <Setter Property="VerticalAlignment" Value="Center"/>
-    </Style>
-    <Style x:Key="QuotaResetStyle" TargetType="{x:Type TextBlock}">
-      <Setter Property="Foreground" Value="#7A8496"/>
-      <Setter Property="FontSize" Value="9.5"/>
-      <Setter Property="VerticalAlignment" Value="Center"/>
-      <Setter Property="HorizontalAlignment" Value="Center"/>
-      <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
     </Style>
     <Style x:Key="QuotaPercentStyle" TargetType="{x:Type TextBlock}">
       <Setter Property="Foreground" Value="#172033"/>
@@ -109,8 +130,8 @@ $mainXaml = @'
     </Style>
   </Window.Resources>
 
-  <Border x:Name="MainCard" Background="#FAFBFD" BorderBrush="#DDE3EC" BorderThickness="1"
-          CornerRadius="12" Padding="8">
+  <Border x:Name="MainCard" Background="#F2FFFFFF" BorderThickness="0"
+          CornerRadius="16" Padding="8">
     <Grid>
       <Grid.RowDefinitions>
         <RowDefinition Height="24"/>
@@ -149,35 +170,55 @@ $mainXaml = @'
                 Content="&#215;" FontSize="14" FontWeight="Light" ToolTip="&#38544;&#34255;"/>
       </Grid>
 
-      <Grid x:Name="FiveRow" Grid.Row="1" Margin="0,0,0,1">
-        <Grid.ColumnDefinitions><ColumnDefinition Width="44"/><ColumnDefinition Width="*"/><ColumnDefinition Width="52"/></Grid.ColumnDefinitions>
-        <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="3"/></Grid.RowDefinitions>
+      <Grid x:Name="FiveRow" Grid.Row="1" Margin="0,0,0,1" Background="Transparent">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="44"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <TextBlock x:Name="FiveLabel" Text="5 &#23567;&#26102;" Style="{StaticResource QuotaLabelStyle}"/>
-        <TextBlock x:Name="FiveReset" Grid.Column="1" Text="--" Style="{StaticResource QuotaResetStyle}"/>
-        <TextBlock x:Name="FivePercent" Grid.Column="2" Text="--" Style="{StaticResource QuotaPercentStyle}"/>
-        <ProgressBar x:Name="FiveProgress" Grid.Row="1" Grid.ColumnSpan="3" Minimum="0" Maximum="100"
-                     Value="0" Style="{StaticResource ThinProgressStyle}"/>
+        <ProgressBar x:Name="FiveProgress" Grid.Column="1" Minimum="0" Maximum="100" Value="0"
+                     Style="{StaticResource ThinProgressStyle}">
+          <ProgressBar.Foreground>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+              <GradientStop Color="#2BA471" Offset="0"/>
+              <GradientStop Color="#4CC98F" Offset="1"/>
+            </LinearGradientBrush>
+          </ProgressBar.Foreground>
+        </ProgressBar>
+        <TextBlock x:Name="FivePercent" Grid.Column="2" Text="--" Margin="6,0,0,0"
+                   Style="{StaticResource QuotaPercentStyle}"/>
       </Grid>
 
-      <Grid x:Name="WeeklyRow" Grid.Row="2" Margin="0,0,0,1">
-        <Grid.ColumnDefinitions><ColumnDefinition Width="44"/><ColumnDefinition Width="*"/><ColumnDefinition Width="52"/></Grid.ColumnDefinitions>
-        <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="3"/></Grid.RowDefinitions>
+      <Grid x:Name="WeeklyRow" Grid.Row="2" Margin="0,0,0,1" Background="Transparent">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="44"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <TextBlock x:Name="WeeklyLabel" Text="&#27599;&#21608;" Style="{StaticResource QuotaLabelStyle}"/>
-        <TextBlock x:Name="WeeklyReset" Grid.Column="1" Text="--" Style="{StaticResource QuotaResetStyle}"/>
-        <TextBlock x:Name="WeeklyPercent" Grid.Column="2" Text="--" Style="{StaticResource QuotaPercentStyle}"/>
-        <ProgressBar x:Name="WeeklyProgress" Grid.Row="1" Grid.ColumnSpan="3" Minimum="0" Maximum="100"
-                     Value="0" Style="{StaticResource ThinProgressStyle}"/>
+        <ProgressBar x:Name="WeeklyProgress" Grid.Column="1" Minimum="0" Maximum="100" Value="0"
+                     Style="{StaticResource ThinProgressStyle}">
+          <ProgressBar.Foreground>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+              <GradientStop Color="#3478F6" Offset="0"/>
+              <GradientStop Color="#5F95FF" Offset="1"/>
+            </LinearGradientBrush>
+          </ProgressBar.Foreground>
+        </ProgressBar>
+        <TextBlock x:Name="WeeklyPercent" Grid.Column="2" Text="--" Margin="6,0,0,0"
+                   Style="{StaticResource QuotaPercentStyle}"/>
       </Grid>
 
-      <Grid x:Name="MonthlyRow" Grid.Row="3">
-        <Grid.ColumnDefinitions><ColumnDefinition Width="44"/><ColumnDefinition Width="*"/><ColumnDefinition Width="52"/></Grid.ColumnDefinitions>
-        <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="3"/></Grid.RowDefinitions>
+      <Grid x:Name="MonthlyRow" Grid.Row="3" Background="Transparent">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="44"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <TextBlock x:Name="MonthlyLabel" Text="&#27599;&#26376;" Style="{StaticResource QuotaLabelStyle}"/>
-        <TextBlock x:Name="MonthlyReset" Grid.Column="1" Text="--" Style="{StaticResource QuotaResetStyle}"/>
-        <TextBlock x:Name="MonthlyPercent" Grid.Column="2" Text="--" Style="{StaticResource QuotaPercentStyle}"/>
-        <ProgressBar x:Name="MonthlyProgress" Grid.Row="1" Grid.ColumnSpan="3" Minimum="0" Maximum="100"
-                     Value="0" Style="{StaticResource ThinProgressStyle}"/>
+        <ProgressBar x:Name="MonthlyProgress" Grid.Column="1" Minimum="0" Maximum="100" Value="0"
+                     Style="{StaticResource ThinProgressStyle}">
+          <ProgressBar.Foreground>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+              <GradientStop Color="#D7952B" Offset="0"/>
+              <GradientStop Color="#F0B44C" Offset="1"/>
+            </LinearGradientBrush>
+          </ProgressBar.Foreground>
+        </ProgressBar>
+        <TextBlock x:Name="MonthlyPercent" Grid.Column="2" Text="--" Margin="6,0,0,0"
+                   Style="{StaticResource QuotaPercentStyle}"/>
       </Grid>
+      <ResizeGrip Grid.Row="3" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                  Width="12" Height="12" Margin="1" Opacity="0"/>
     </Grid>
   </Border>
 </Window>
@@ -376,15 +417,16 @@ function Update-TMRow {
         [AllowNull()]$Item
     )
 
+    $row = $script:window.FindName($Prefix + 'Row')
     $percentText = $script:window.FindName($Prefix + 'Percent')
     $progress = $script:window.FindName($Prefix + 'Progress')
-    $resetText = $script:window.FindName($Prefix + 'Reset')
+    $label = $script:window.FindName($Prefix + 'Label').Text
     if ($null -eq $Item) {
         $percentText.Text = '--'
         $percentText.FontSize = 15
         $progress.Value = 0
         $progress.Visibility = 'Hidden'
-        $resetText.Text = Get-TMText 'Waiting'
+        $row.ToolTip = Get-TMText 'Waiting'
         return
     }
     if ($null -eq $Item.RemainingPercent) {
@@ -392,7 +434,7 @@ function Update-TMRow {
         $percentText.FontSize = 10.5
         $progress.Value = 0
         $progress.Visibility = 'Hidden'
-        $resetText.Text = '--'
+        $row.ToolTip = ('{0} · {1}' -f $label, (Get-TMText 'Unavailable'))
         return
     }
     $percentText.FontSize = 15
@@ -401,7 +443,7 @@ function Update-TMRow {
     $percentText.Text = ('{0:g}%' -f $rounded)
     $progress.Value = $rounded
     $countdown = ConvertTo-TMCountdown -ResetAt $Item.ResetAt -Fallback $Item.TimeUntilReset
-    $resetText.Text = ('{0} {1}' -f $countdown, (Get-TMText 'ResetIn'))
+    $row.ToolTip = ('{0} · {1}% · {2} {3}' -f $label, ('{0:g}' -f $rounded), $countdown, (Get-TMText 'ResetIn'))
 }
 
 function Update-TMWindow {
@@ -498,9 +540,9 @@ if ($ValidateOnly -or $ValidateHideLifecycle) {
     $requiredControls = @(
         'DragArea', 'HeaderIcon', 'FreshnessPanel', 'FreshnessDot', 'FreshnessText', 'HideButton',
         'RefreshButton', 'PinButton',
-        'FiveLabel', 'FiveReset', 'FivePercent', 'FiveProgress',
-        'WeeklyLabel', 'WeeklyReset', 'WeeklyPercent', 'WeeklyProgress',
-        'MonthlyLabel', 'MonthlyReset', 'MonthlyPercent', 'MonthlyProgress'
+        'FiveLabel', 'FivePercent', 'FiveProgress',
+        'WeeklyLabel', 'WeeklyPercent', 'WeeklyProgress',
+        'MonthlyLabel', 'MonthlyPercent', 'MonthlyProgress'
     )
     foreach ($name in $requiredControls) {
         if ($null -eq $validationWindow.FindName($name)) {
@@ -523,7 +565,7 @@ if ($ValidateOnly -or $ValidateHideLifecycle) {
         $validationWindow.Content.Arrange((New-Object Windows.Rect(0, 0, $layoutSize.Width, $layoutSize.Height)))
         $validationWindow.Content.UpdateLayout()
         foreach ($prefix in @('Five', 'Weekly', 'Monthly')) {
-            foreach ($suffix in @('Label', 'Reset', 'Percent', 'Progress')) {
+            foreach ($suffix in @('Label', 'Percent', 'Progress')) {
                 $control = $validationWindow.FindName($prefix + $suffix)
                 if ($control.ActualWidth -le 0 -or $control.ActualHeight -le 0) {
                     throw ('WPF layout failed at {0}x{1}: {2}{3}' -f $layoutSize.Width, $layoutSize.Height, $prefix, $suffix)
@@ -568,13 +610,13 @@ if ($ValidateOnly -or $ValidateHideLifecycle) {
     $chrome = [Windows.Shell.WindowChrome]::GetWindowChrome($validationWindow)
     $result = [PSCustomObject]@{
         Message                   = 'TokenMinister WPF resources are valid.'
-        Width                     = 208
-        Height                    = 118
+        Width                     = 251
+        Height                    = 166
         MinWidth                  = $validationWindow.MinWidth
         MinHeight                 = $validationWindow.MinHeight
         ResizeMode                = $validationWindow.ResizeMode
-        ResizeBorderThickness     = $chrome.ResizeBorderThickness.Left
-        CaptionHeight             = $chrome.CaptionHeight
+        ResizeBorderThickness     = if ($null -ne $chrome) { $chrome.ResizeBorderThickness.Left } else { 0 }
+        CaptionHeight             = if ($null -ne $chrome) { $chrome.CaptionHeight } else { 0 }
         LayoutSizesValidated      = $layoutSizes.Count
     }
     [void]$validationWindow.Close()

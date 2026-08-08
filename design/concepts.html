@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>TokenMinister UI Concepts</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background: radial-gradient(1200px 800px at 30% 20%, #3b3f6e 0%, #232642 45%, #12141f 100%);
+    padding: 48px 56px;
+  }
+  h1 { color: #e8ecf6; font-size: 22px; font-weight: 600; margin-bottom: 6px; letter-spacing: .5px; }
+  .sub { color: #9aa4bf; font-size: 12.5px; margin-bottom: 34px; }
+
+  .concept { margin-bottom: 44px; }
+  .label { color: #b9c1d6; font-size: 12px; font-weight: 600; margin-bottom: 12px; letter-spacing: .4px; }
+
+  /* ---------- shared widget internals ---------- */
+  .widget {
+    width: 208px; height: 118px;
+    display: flex; flex-direction: column;
+    padding: 8px; position: relative;
+  }
+  .hdr { height: 24px; display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+  .hdr .ico { width: 16px; height: 16px; flex: 0 0 auto; }
+  .hdr .title { font-size: 12px; font-weight: 600; flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fresh { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; font-size: 9.5px; margin: 0 4px; }
+  .fresh .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .hbtn { width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; border-radius: 4px; flex: 0 0 auto; cursor: pointer; }
+  .hbtn svg { width: 11px; height: 11px; }
+  .rows { flex: 1 1 auto; display: flex; flex-direction: column; }
+  .row { flex: 1 1 0; display: flex; align-items: center; gap: 6px; min-height: 0; }
+  .row .lbl { font-size: 11px; font-weight: 600; width: 44px; flex: 0 0 auto; }
+  .row .track { flex: 1 1 auto; height: 60%; min-height: 8px; position: relative; }
+  .row .pct { font-size: 15px; font-weight: 600; flex: 0 0 auto; line-height: 1; }
+
+  /* ---------- A 深色霓虹 ---------- */
+  .w-neon { background: #171a22; border-radius: 8px; box-shadow: 0 0 0 1px rgba(255,255,255,.06), 0 14px 34px rgba(0,0,0,.55); }
+  .w-neon .title { color: #eef1f7; }
+  .w-neon .fresh { color: #8b93a7; }
+  .w-neon .dot { background: #2bd98b; box-shadow: 0 0 6px #2bd98b; }
+  .w-neon .hbtn { color: #9aa3b8; }
+  .w-neon .hbtn:hover { background: rgba(255,255,255,.08); }
+  .w-neon .lbl { color: #8b93a7; }
+  .w-neon .pct { color: #eef1f7; }
+  .w-neon .track { background: #232733; }
+  .w-neon .fill { height: 100%; }
+  .w-neon .f1 { background: linear-gradient(90deg,#00e5a0,#2bd98b); box-shadow: 0 0 10px rgba(0,229,160,.45); }
+  .w-neon .f2 { background: linear-gradient(90deg,#4a7bff,#6ea0ff); box-shadow: 0 0 10px rgba(74,123,255,.45); }
+  .w-neon .f3 { background: linear-gradient(90deg,#ffb84d,#ffd27a); box-shadow: 0 0 10px rgba(255,184,77,.4); }
+
+  /* ---------- B 玻璃拟态 ---------- */
+  .w-glass { background: rgba(255,255,255,.52); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.65); border-radius: 12px; box-shadow: 0 16px 40px rgba(10,12,30,.5); }
+  .w-glass .title { color: #1c2030; }
+  .w-glass .fresh { color: #5c6478; }
+  .w-glass .dot { background: #2ba471; }
+  .w-glass .hbtn { color: #5c6478; }
+  .w-glass .hbtn:hover { background: rgba(28,32,48,.08); }
+  .w-glass .lbl { color: #5c6478; }
+  .w-glass .pct { color: #1c2030; }
+  .w-glass .track { background: rgba(28,32,48,.14); }
+  .w-glass .fill { height: 100%; border-radius: 3px; }
+  .w-glass .f1 { background: linear-gradient(90deg,#2ba471,#4cc98f); }
+  .w-glass .f2 { background: linear-gradient(90deg,#3478f6,#5f95ff); }
+  .w-glass .f3 { background: linear-gradient(90deg,#d7952b,#f0b44c); }
+
+  /* ---------- C 深色极简 ---------- */
+  .w-dark { background: #0e1013; border-radius: 6px; box-shadow: 0 10px 30px rgba(0,0,0,.6); }
+  .w-dark .title { color: #f2f4f8; }
+  .w-dark .fresh { color: #7a8496; }
+  .w-dark .dot { background: #3478f6; }
+  .w-dark .hbtn { color: #7a8496; }
+  .w-dark .hbtn:hover { background: rgba(255,255,255,.07); }
+  .w-dark .lbl { color: #8b93a7; }
+  .w-dark .pct { color: #f2f4f8; }
+  .w-dark .track { background: #1d2026; }
+  .w-dark .fill { height: 100%; background: #3478f6; }
+
+  /* ---------- D 浅色柔和 ---------- */
+  .w-light { background: #ffffff; border-radius: 8px; box-shadow: 0 12px 30px rgba(30,40,80,.18); }
+  .w-light .title { color: #172033; }
+  .w-light .fresh { color: #7a8496; }
+  .w-light .dot { background: #2ba471; }
+  .w-light .hbtn { color: #7a8496; }
+  .w-light .hbtn:hover { background: rgba(23,32,51,.06); }
+  .w-light .lbl { color: #4f596b; }
+  .w-light .pct { color: #172033; }
+  .w-light .track { background: #e9edf3; }
+  .w-light .fill { height: 100%; }
+  .w-light .f1 { background: #34c77b; }
+  .w-light .f2 { background: #4a7bff; }
+  .w-light .f3 { background: #f5a623; }
+</style>
+</head>
+<body>
+
+<h1>TokenMinister · UI 概念图</h1>
+<div class="sub">窗口 208×118（2 倍缩放渲染）· 单行布局：标签 | 进度条 | 剩余百分比 · 悬停行/按钮有反馈</div>
+
+<div class="concept">
+  <div class="label">A · 深色霓虹 — 深色卡片 + 每档渐变光晕进度条</div>
+  <div class="widget w-neon">
+    <div class="hdr">
+      <svg class="ico" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="#3478f6"/><circle cx="8" cy="8" r="3.4" fill="#fff"/></svg>
+      <div class="title">TokenMinister</div>
+      <div class="fresh"><span class="dot"></span><span>刚刚更新</span></div>
+      <div class="hbtn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.5 1.5v3h-3"/></svg></div>
+      <div class="hbtn"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5 5.8 6.2 1 6.8l3.4 3.3-.8 4.7L8 12.8l4.4 2-.8-4.7L15 6.8l-4.8-.6z"/></svg></div>
+      <div class="hbtn"><span style="font-size:13px;line-height:1">&#215;</span></div>
+    </div>
+    <div class="rows">
+      <div class="row"><div class="lbl">5 小时</div><div class="track"><div class="fill f1" style="width:75%"></div></div><div class="pct">75%</div></div>
+      <div class="row"><div class="lbl">每周</div><div class="track"><div class="fill f2" style="width:55%"></div></div><div class="pct">55%</div></div>
+      <div class="row"><div class="lbl">每月</div><div class="track"><div class="fill f3" style="width:30%"></div></div><div class="pct">30%</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="concept">
+  <div class="label">B · 玻璃拟态 — 半透明磨砂 + 背景模糊，跟随桌面壁纸</div>
+  <div class="widget w-glass">
+    <div class="hdr">
+      <svg class="ico" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="#3478f6"/><circle cx="8" cy="8" r="3.4" fill="#fff"/></svg>
+      <div class="title">TokenMinister</div>
+      <div class="fresh"><span class="dot"></span><span>刚刚更新</span></div>
+      <div class="hbtn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.5 1.5v3h-3"/></svg></div>
+      <div class="hbtn"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5 5.8 6.2 1 6.8l3.4 3.3-.8 4.7L8 12.8l4.4 2-.8-4.7L15 6.8l-4.8-.6z"/></svg></div>
+      <div class="hbtn"><span style="font-size:13px;line-height:1">&#215;</span></div>
+    </div>
+    <div class="rows">
+      <div class="row"><div class="lbl">5 小时</div><div class="track"><div class="fill f1" style="width:75%"></div></div><div class="pct">75%</div></div>
+      <div class="row"><div class="lbl">每周</div><div class="track"><div class="fill f2" style="width:55%"></div></div><div class="pct">55%</div></div>
+      <div class="row"><div class="lbl">每月</div><div class="track"><div class="fill f3" style="width:30%"></div></div><div class="pct">30%</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="concept">
+  <div class="label">C · 深色极简 — 近黑卡片 + 单一蓝色进度条，克制</div>
+  <div class="widget w-dark">
+    <div class="hdr">
+      <svg class="ico" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="#3478f6"/><circle cx="8" cy="8" r="3.4" fill="#fff"/></svg>
+      <div class="title">TokenMinister</div>
+      <div class="fresh"><span class="dot"></span><span>刚刚更新</span></div>
+      <div class="hbtn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.5 1.5v3h-3"/></svg></div>
+      <div class="hbtn"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5 5.8 6.2 1 6.8l3.4 3.3-.8 4.7L8 12.8l4.4 2-.8-4.7L15 6.8l-4.8-.6z"/></svg></div>
+      <div class="hbtn"><span style="font-size:13px;line-height:1">&#215;</span></div>
+    </div>
+    <div class="rows">
+      <div class="row"><div class="lbl">5 小时</div><div class="track"><div class="fill" style="width:75%"></div></div><div class="pct">75%</div></div>
+      <div class="row"><div class="lbl">每周</div><div class="track"><div class="fill" style="width:55%"></div></div><div class="pct">55%</div></div>
+      <div class="row"><div class="lbl">每月</div><div class="track"><div class="fill" style="width:30%"></div></div><div class="pct">30%</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="concept">
+  <div class="label">D · 浅色柔和 — 白卡片 + 每档柔和色，明快不刺眼</div>
+  <div class="widget w-light">
+    <div class="hdr">
+      <svg class="ico" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="#3478f6"/><circle cx="8" cy="8" r="3.4" fill="#fff"/></svg>
+      <div class="title">TokenMinister</div>
+      <div class="fresh"><span class="dot"></span><span>刚刚更新</span></div>
+      <div class="hbtn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.5 1.5v3h-3"/></svg></div>
+      <div class="hbtn"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5 5.8 6.2 1 6.8l3.4 3.3-.8 4.7L8 12.8l4.4 2-.8-4.7L15 6.8l-4.8-.6z"/></svg></div>
+      <div class="hbtn"><span style="font-size:13px;line-height:1">&#215;</span></div>
+    </div>
+    <div class="rows">
+      <div class="row"><div class="lbl">5 小时</div><div class="track"><div class="fill f1" style="width:75%"></div></div><div class="pct">75%</div></div>
+      <div class="row"><div class="lbl">每周</div><div class="track"><div class="fill f2" style="width:55%"></div></div><div class="pct">55%</div></div>
+      <div class="row"><div class="lbl">每月</div><div class="track"><div class="fill f3" style="width:30%"></div></div><div class="pct">30%</div></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -285,8 +285,8 @@ function Save-TMSettings {
         WorkspaceId  = [string](Get-TMPropertyValue -InputObject $Settings -Name 'WorkspaceId' -DefaultValue '')
         WindowLeft   = Get-TMPropertyValue -InputObject $Settings -Name 'WindowLeft'
         WindowTop    = Get-TMPropertyValue -InputObject $Settings -Name 'WindowTop'
-        WindowWidth  = Get-TMPropertyValue -InputObject $Settings -Name 'WindowWidth' -DefaultValue 208
-        WindowHeight = Get-TMPropertyValue -InputObject $Settings -Name 'WindowHeight' -DefaultValue 118
+        WindowWidth  = Get-TMPropertyValue -InputObject $Settings -Name 'WindowWidth' -DefaultValue 251
+        WindowHeight = Get-TMPropertyValue -InputObject $Settings -Name 'WindowHeight' -DefaultValue 166
         AlwaysOnTop  = [bool](Get-TMPropertyValue -InputObject $Settings -Name 'AlwaysOnTop' -DefaultValue $true)
     }
     $json = $safeSettings | ConvertTo-Json
@@ -304,8 +304,8 @@ function Read-TMSettings {
             WorkspaceId  = ''
             WindowLeft   = $null
             WindowTop    = $null
-            WindowWidth  = 208
-            WindowHeight = 118
+            WindowWidth  = 251
+            WindowHeight = 166
             AlwaysOnTop  = $true
         }
     }
@@ -319,8 +319,8 @@ function Read-TMSettings {
         WorkspaceId  = [string](Get-TMPropertyValue -InputObject $settings -Name 'WorkspaceId' -DefaultValue '')
         WindowLeft   = Get-TMPropertyValue -InputObject $settings -Name 'WindowLeft'
         WindowTop    = Get-TMPropertyValue -InputObject $settings -Name 'WindowTop'
-        WindowWidth  = Get-TMPropertyValue -InputObject $settings -Name 'WindowWidth' -DefaultValue 208
-        WindowHeight = Get-TMPropertyValue -InputObject $settings -Name 'WindowHeight' -DefaultValue 118
+        WindowWidth  = Get-TMPropertyValue -InputObject $settings -Name 'WindowWidth' -DefaultValue 251
+        WindowHeight = Get-TMPropertyValue -InputObject $settings -Name 'WindowHeight' -DefaultValue 166
         AlwaysOnTop  = [bool](Get-TMPropertyValue -InputObject $settings -Name 'AlwaysOnTop' -DefaultValue $true)
     }
 }
@@ -330,8 +330,8 @@ function Resolve-TMWindowSize {
     param(
         [Parameter(Mandatory = $true)]$Settings,
         [Parameter(Mandatory = $true)]$WorkingArea,
-        [ValidateRange(1, 10000)][double]$DefaultWidth = 208,
-        [ValidateRange(1, 10000)][double]$DefaultHeight = 118,
+        [ValidateRange(1, 10000)][double]$DefaultWidth = 251,
+        [ValidateRange(1, 10000)][double]$DefaultHeight = 166,
         [ValidateRange(1, 10000)][double]$MinimumWidth = 192,
         [ValidateRange(1, 10000)][double]$MinimumHeight = 108
     )
