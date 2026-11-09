@@ -130,7 +130,7 @@ $mainXaml = @'
     </Style>
   </Window.Resources>
 
-  <Border x:Name="MainCard" Background="#F2FFFFFF" BorderThickness="0"
+  <Border x:Name="MainCard" Background="#BFFFFFFF" BorderThickness="0"
           CornerRadius="16" Padding="8" Margin="10">
     <Border.Effect>
       <DropShadowEffect Color="#172033" BlurRadius="8" ShadowDepth="1.5" Direction="270"
