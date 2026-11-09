@@ -422,3 +422,91 @@ Describe 'TokenMinister window placement' {
         $position.Top | Should Be 369
     }
 }
+
+Describe 'ConvertFrom-TMOpenCodeGoStatus' {
+    It 'converts console meter micro-cents into three ordered remaining quota models' {
+        $json = @'
+{
+  "access": {
+    "endsAt": "2026-10-13T01:31:34.000Z",
+    "meters": {
+      "fiveHour": {
+        "startsAt": "2026-09-22T01:24:12.585Z",
+        "resetsAt": "2026-09-22T05:24:12.585Z",
+        "limitMicroCents": "1200000000",
+        "usedMicroCents": "18384251"
+      },
+      "week": {
+        "startsAt": "2026-09-22T00:00:00.000Z",
+        "resetsAt": "2026-09-28T00:00:00.000Z",
+        "limitMicroCents": "3000000000",
+        "usedMicroCents": "767560314"
+      },
+      "month": {
+        "limitMicroCents": "6000000000",
+        "usedMicroCents": "1796934324"
+      }
+    }
+  }
+}
+'@
+
+        $result = @(ConvertFrom-TMOpenCodeGoStatus -Json $json)
+
+        $result.Count | Should Be 3
+        ($result.Key -join ',') | Should Be 'five_hour,weekly,monthly'
+        ($result.Label -join ',') | Should Be '5 hours,Weekly,Monthly'
+        [Math]::Round($result[0].RemainingPercent, 6) | Should Be 98.467979
+        [Math]::Round($result[1].RemainingPercent, 6) | Should Be 74.414656
+        [Math]::Round($result[2].RemainingPercent, 6) | Should Be 70.051095
+        $result[0].ResetAt | Should Be '2026-09-22T05:24:12.585Z'
+        $result[1].ResetAt | Should Be '2026-09-28T00:00:00.000Z'
+        $result[0].TimeUntilReset | Should Be $null
+        $result[0].IsStale | Should Be $false
+    }
+
+    It 'falls back to access.endsAt for a meter without resetsAt' {
+        $json = @'
+{
+  "access": {
+    "endsAt": "2026-10-13T01:31:34.000Z",
+    "meters": {
+      "month": { "limitMicroCents": "6000000000", "usedMicroCents": "1796934324" }
+    }
+  }
+}
+'@
+
+        $result = @(ConvertFrom-TMOpenCodeGoStatus -Json $json)
+
+        ($result.Key -join ',') | Should Be 'five_hour,weekly,monthly'
+        $result[0].RemainingPercent | Should Be $null
+        $result[2].ResetAt | Should Be '2026-10-13T01:31:34.000Z'
+    }
+
+    It 'clamps utilization into the 0-100 percent window' {
+        $json = @'
+{
+  "access": {
+    "endsAt": "2026-10-13T01:31:34.000Z",
+    "meters": {
+      "fiveHour": { "resetsAt": "2026-09-22T05:24:12.585Z", "limitMicroCents": "100", "usedMicroCents": "5000" },
+      "week": { "resetsAt": "2026-09-28T00:00:00.000Z", "limitMicroCents": "100", "usedMicroCents": "0" }
+    }
+  }
+}
+'@
+
+        $result = @(ConvertFrom-TMOpenCodeGoStatus -Json $json)
+
+        $result[0].RemainingPercent | Should Be 0
+        $result[1].RemainingPercent | Should Be 100
+    }
+
+    It 'rejects malformed status payloads' {
+        { ConvertFrom-TMOpenCodeGoStatus -Json 'not-json' } | Should Throw 'Invalid OpenCode Go status JSON.'
+        { ConvertFrom-TMOpenCodeGoStatus -Json '{"unrelated":true}' } | Should Throw 'OpenCode Go status has no meter data.'
+        { ConvertFrom-TMOpenCodeGoStatus -Json '{"access":{"meters":{"week":{"limitMicroCents":"x","usedMicroCents":"1"}}}}' } |
+            Should Throw 'OpenCode Go status has invalid usage numbers.'
+    }
+}

@@ -240,11 +240,11 @@ $credentialXaml = @'
     </Grid.RowDefinitions>
     <TextBlock Text="OpenCode Go &#20973;&#25454;" FontSize="20" FontWeight="SemiBold"/>
     <TextBlock Grid.Row="1" Margin="0,8,0,16" Foreground="#9AA6BF" TextWrapping="Wrap"
-               Text="&#20174; OpenCode dashboard &#22797;&#21046; workspace ID &#21644; auth cookie&#12290;Cookie &#21482;&#20250;&#29992; Windows DPAPI &#21152;&#23494;&#20445;&#23384;&#12290;"/>
+               Text="&#20174; OpenCode &#25511;&#21046;&#21488; &#22797;&#21046; workspace ID &#21644;&#20250;&#35805; Cookie&#65288;__Host-console_session &#30340;&#20540;&#65292;&#27983;&#35272;&#22120; F12 &#8594; Application &#8594; Cookies&#65292;&#21491;&#38190;&#22797;&#21046; Value&#65289;&#12290;Cookie &#21482;&#20250;&#29992; Windows DPAPI &#21152;&#23494;&#20445;&#23384;&#12290;"/>
     <TextBlock Grid.Row="2" Text="Workspace ID" Margin="0,0,0,5"/>
     <TextBox x:Name="WorkspaceBox" Grid.Row="3" Height="30" Padding="7,4" Background="#282E3D" Foreground="#F2F5FA"
              BorderBrush="#46516A"/>
-    <TextBlock Grid.Row="4" Text="auth cookie" Margin="0,14,0,5"/>
+    <TextBlock Grid.Row="4" Text="session cookie (__Host-console_session)" Margin="0,14,0,5"/>
     <PasswordBox x:Name="CookieBox" Grid.Row="5" Height="30" Padding="7,4" VerticalAlignment="Top"
                  Background="#282E3D" Foreground="#F2F5FA" BorderBrush="#46516A"/>
     <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
@@ -508,7 +508,8 @@ function Invoke-TMRefresh {
     $script:runtime.IsRefreshing = $true
     try {
         $script:runtime.State = Update-TMQuotaState -State $script:runtime.State -Fetcher {
-            Get-TMQuotaSnapshot -Uri $SummaryUri -TimeoutSeconds 3
+            Get-TMOpenCodeGoSnapshot -WorkspaceId $script:settings.WorkspaceId `
+                -SessionCookie (Get-TMCookie) -TimeoutSeconds 8
         }
         Update-TMWindow
         Set-TMWindowInVisibleArea
@@ -530,12 +531,12 @@ function Start-TMBackendIfNeeded {
         throw ('onWatch binary was not found: {0}' -f $BackendPath)
     }
     Start-TMOnWatchBackend -BinaryPath $BackendPath -WorkspaceId $script:settings.WorkspaceId `
-        -AuthCookie (Get-TMCookie) -DatabasePath $databasePath | Out-Null
+        -DatabasePath $databasePath | Out-Null
 }
 
 function Restart-TMRuntimeBackend {
     Restart-TMOnWatchBackend -BinaryPath $BackendPath -WorkspaceId $script:settings.WorkspaceId `
-        -AuthCookie (Get-TMCookie) -DatabasePath $databasePath | Out-Null
+        -DatabasePath $databasePath | Out-Null
     $script:runtime.State = New-TMQuotaState
     Start-Sleep -Milliseconds 500
     Invoke-TMRefresh
@@ -805,7 +806,8 @@ try {
             $script:settings.WorkspaceId = $credentials.WorkspaceId
             Save-TMSettings -Path $settingsPath -Settings $script:settings
             Save-TMSecret -Path $secretPath -PlainText $credentials.AuthCookie
-            Restart-TMRuntimeBackend
+            $script:runtime.State = New-TMQuotaState
+            Invoke-TMRefresh
         }
     })
     $restartItem.Add_Click({

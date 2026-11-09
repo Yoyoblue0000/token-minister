@@ -156,6 +156,105 @@ function Get-TMQuotaSnapshot {
     return ConvertFrom-TMOnWatchSnapshot -Json $response.Content -StaleAfterSeconds $StaleAfterSeconds
 }
 
+function ConvertFrom-TMOpenCodeGoStatus {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Json
+    )
+
+    try {
+        $status = $Json | ConvertFrom-Json
+    }
+    catch {
+        throw 'Invalid OpenCode Go status JSON.'
+    }
+    $access = Get-TMPropertyValue -InputObject $status -Name 'access'
+    $meters = Get-TMPropertyValue -InputObject $access -Name 'meters'
+    if ($null -eq $meters) {
+        throw 'OpenCode Go status has no meter data.'
+    }
+    $fallbackResetAt = Get-TMPropertyValue -InputObject $access -Name 'endsAt'
+
+    $definitions = @(
+        @{ Key = 'five_hour'; SourceKey = 'fiveHour'; Label = '5 hours' },
+        @{ Key = 'weekly'; SourceKey = 'week'; Label = 'Weekly' },
+        @{ Key = 'monthly'; SourceKey = 'month'; Label = 'Monthly' }
+    )
+
+    foreach ($definition in $definitions) {
+        $meter = Get-TMPropertyValue -InputObject $meters -Name $definition.SourceKey
+        $remaining = $null
+        $resetAt = $fallbackResetAt
+        if ($null -ne $meter) {
+            $limitRaw = Get-TMPropertyValue -InputObject $meter -Name 'limitMicroCents'
+            $usedRaw = Get-TMPropertyValue -InputObject $meter -Name 'usedMicroCents'
+            if ($null -ne $limitRaw -and $null -ne $usedRaw) {
+                try {
+                    $limit = [double]::Parse([string]$limitRaw, [Globalization.CultureInfo]::InvariantCulture)
+                    $used = [double]::Parse([string]$usedRaw, [Globalization.CultureInfo]::InvariantCulture)
+                }
+                catch {
+                    throw 'OpenCode Go status has invalid usage numbers.'
+                }
+                if ($limit -gt 0) {
+                    $utilization = $used / $limit * 100.0
+                    $utilization = [Math]::Min([double]100.0, [Math]::Max([double]0.0, $utilization))
+                    $remaining = [double](100.0 - $utilization)
+                }
+            }
+            $meterResetAt = Get-TMPropertyValue -InputObject $meter -Name 'resetsAt'
+            if (-not [string]::IsNullOrWhiteSpace([string]$meterResetAt)) {
+                $resetAt = [string]$meterResetAt
+            }
+        }
+        [PSCustomObject]@{
+            PSTypeName       = 'TokenMinister.QuotaViewModel'
+            Key              = $definition.Key
+            Label            = $definition.Label
+            RemainingPercent = $remaining
+            TimeUntilReset   = $null
+            ResetAt          = $resetAt
+            IsStale          = $false
+        }
+    }
+}
+
+function Get-TMOpenCodeGoSnapshot {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string]$WorkspaceId,
+        [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string]$SessionCookie,
+        [string]$Uri = 'https://opencode.ai/console/api/go/status',
+        [ValidateRange(1, 60)][int]$TimeoutSeconds = 10
+    )
+
+    $targetUri = [Uri]$Uri
+    $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+    $session.Cookies = New-Object System.Net.CookieContainer
+    [void]$session.Cookies.Add((New-Object System.Net.Cookie(
+        '__Host-console_session', $SessionCookie.Trim(), '/', $targetUri.Host)))
+    try {
+        $response = Invoke-WebRequest -UseBasicParsing -Uri $Uri -WebSession $session `
+            -Headers @{ 'x-org-id' = $WorkspaceId.Trim(); 'Accept' = 'application/json' } `
+            -TimeoutSec $TimeoutSeconds -MaximumRedirection 0
+    }
+    catch {
+        $statusCode = $null
+        if ($_.Exception.Response) {
+            try { $statusCode = [int]$_.Exception.Response.StatusCode } catch { $statusCode = $null }
+        }
+        if ($statusCode -eq 401 -or $statusCode -eq 403) {
+            throw 'OpenCode rejected the session cookie (unauthorized).'
+        }
+        if ($statusCode -ge 300 -and $statusCode -lt 400) {
+            throw 'OpenCode redirected the status request; the session cookie is no longer valid.'
+        }
+        throw ('Unable to read the OpenCode Go status: {0}' -f $_.Exception.Message)
+    }
+    return ConvertFrom-TMOpenCodeGoStatus -Json $response.Content
+}
+
 function New-TMQuotaState {
     [CmdletBinding()]
     param()
@@ -399,7 +498,7 @@ function Start-TMOnWatchBackend {
     param(
         [Parameter(Mandatory = $true)][string]$BinaryPath,
         [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string]$WorkspaceId,
-        [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string]$AuthCookie,
+        [string]$AuthCookie,
         [ValidateRange(1, 65535)][int]$Port = 9211,
         [ValidateRange(30, 86400)][int]$PollIntervalSeconds = 120,
         [string]$DatabasePath,
@@ -415,12 +514,14 @@ function Start-TMOnWatchBackend {
 
     $values = [ordered]@{
         OPENCODE_GO_WORKSPACE_ID  = $WorkspaceId.Trim()
-        OPENCODE_GO_AUTH_COOKIE   = $AuthCookie
         ONWATCH_HOST              = '127.0.0.1'
         ONWATCH_PORT              = [string]$Port
         ONWATCH_POLL_INTERVAL     = [string]$PollIntervalSeconds
         ONWATCH_ADMIN_USER        = 'tokenminister'
         ONWATCH_ADMIN_PASS        = New-TMRandomPassword
+    }
+    if (-not [string]::IsNullOrWhiteSpace($AuthCookie)) {
+        $values['OPENCODE_GO_AUTH_COOKIE'] = $AuthCookie
     }
     if (-not [string]::IsNullOrWhiteSpace($DatabasePath)) {
         $values['ONWATCH_DB_PATH'] = $DatabasePath
@@ -456,7 +557,7 @@ function Restart-TMOnWatchBackend {
     param(
         [Parameter(Mandatory = $true)][string]$BinaryPath,
         [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string]$WorkspaceId,
-        [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string]$AuthCookie,
+        [string]$AuthCookie,
         [ValidateRange(1, 65535)][int]$Port = 9211,
         [ValidateRange(30, 86400)][int]$PollIntervalSeconds = 120,
         [string]$DatabasePath,
@@ -515,7 +616,9 @@ function Get-TMCenteredWindowPosition {
 
 Export-ModuleMember -Function @(
     'ConvertFrom-TMOnWatchSnapshot',
+    'ConvertFrom-TMOpenCodeGoStatus',
     'Get-TMQuotaSnapshot',
+    'Get-TMOpenCodeGoSnapshot',
     'New-TMQuotaState',
     'Update-TMQuotaState',
     'Get-TMFreshnessView',

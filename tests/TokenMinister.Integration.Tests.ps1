@@ -56,6 +56,61 @@ Describe 'onWatch loopback integration' {
     }
 }
 
+Describe 'OpenCode Go status integration' {
+    BeforeAll {
+        $port = Get-TestTcpPort
+        $fixture = Join-Path $PSScriptRoot 'fixtures\opencode-go-status.json'
+        $serverScript = Join-Path $PSScriptRoot 'fixtures\MockOpenCodeServer.ps1'
+        $headersPath = Join-Path $TestDrive 'opencode-headers.txt'
+        $server = Start-Process -FilePath 'powershell.exe' -ArgumentList @(
+            '-NoProfile',
+            '-ExecutionPolicy', 'Bypass',
+            '-File', ('"{0}"' -f $serverScript),
+            '-Port', $port,
+            '-FixturePath', ('"{0}"' -f $fixture),
+            '-HeadersPath', ('"{0}"' -f $headersPath)
+        ) -WindowStyle Hidden -PassThru
+        $uri = "http://127.0.0.1:$port/console/api/go/status"
+        $ready = $false
+        foreach ($attempt in 1..50) {
+            try {
+                Invoke-WebRequest -UseBasicParsing -Uri $uri -TimeoutSec 1 | Out-Null
+                $ready = $true
+                break
+            }
+            catch {
+                Start-Sleep -Milliseconds 100
+            }
+        }
+        if (-not $ready) {
+            throw 'Mock OpenCode server did not start.'
+        }
+    }
+
+    AfterAll {
+        if ($null -ne $server -and -not $server.HasExited) {
+            Stop-Process -Id $server.Id -Force
+        }
+    }
+
+    It 'sends the session cookie and org header and converts the status payload' {
+        $result = @(Get-TMOpenCodeGoSnapshot -WorkspaceId 'wrk_test123' `
+            -SessionCookie 'test-cookie-value' -Uri $uri -TimeoutSeconds 5)
+
+        $result.Count | Should Be 3
+        ($result.Key -join ',') | Should Be 'five_hour,weekly,monthly'
+        $headers = [IO.File]::ReadAllText($headersPath)
+        $headers | Should Match 'x-org-id: wrk_test123'
+        $headers | Should Match '__Host-console_session=test-cookie-value'
+    }
+
+    It 'maps an unauthorized status to a friendly credential error' {
+        { Get-TMOpenCodeGoSnapshot -WorkspaceId 'wrk_test123' -SessionCookie 'stale-cookie' `
+            -Uri ($uri + '?mode=401') -TimeoutSeconds 5 } |
+            Should Throw 'OpenCode rejected the session cookie'
+    }
+}
+
 Describe 'onWatch backend lifecycle integration' {
     It 'passes the cookie only through the child environment and then restores the parent environment' {
         $previousCookie = [Environment]::GetEnvironmentVariable('OPENCODE_GO_AUTH_COOKIE', 'Process')
@@ -93,6 +148,20 @@ Describe 'onWatch backend lifecycle integration' {
         finally {
             [Environment]::SetEnvironmentVariable('OPENCODE_GO_AUTH_COOKIE', $previousCookie, 'Process')
         }
+    }
+
+    It 'omits the OpenCode cookie environment variable when no cookie is provided' {
+        $observedHolder = [PSCustomObject]@{ Value = $null }
+        $runner = {
+            param($FilePath, $ArgumentList, $Wait)
+            $observedHolder.Value = [PSCustomObject]@{ Cookie = $env:OPENCODE_GO_AUTH_COOKIE }
+            return [PSCustomObject]@{ Id = 5678 }
+        }
+
+        Start-TMOnWatchBackend -BinaryPath 'fake-onwatch.exe' -WorkspaceId 'workspace-abc' `
+            -ProcessRunner $runner | Out-Null
+
+        [string]::IsNullOrEmpty($observedHolder.Value.Cookie) | Should Be $true
     }
 
     It 'restarts the backend by stopping before starting it again' {

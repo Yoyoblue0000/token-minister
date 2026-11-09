@@ -17,10 +17,10 @@ function Get-TMOnWatchSpec {
     param()
 
     return [PSCustomObject]@{
-        Version  = 'v2.13.3'
+        Version  = 'v2.14.3'
         FileName = 'onwatch-windows-amd64.exe'
-        Url      = 'https://github.com/onllm-dev/onwatch/releases/download/v2.13.3/onwatch-windows-amd64.exe'
-        Sha256   = 'EC5764CC98ED05CA887C9D541A521163F936C017B771A28BE7CAA710FD03EEC9'
+        Url      = 'https://github.com/onllm-dev/onwatch/releases/download/v2.14.3/onwatch-windows-amd64.exe'
+        Sha256   = 'A8DA1F0D89689C0F5B2735C1EF7298AA9493A600222146EEF42FF527985EC9E1'
     }
 }
 

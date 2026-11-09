@@ -4,12 +4,12 @@ $installerPath = Join-Path $PSScriptRoot '..\install.ps1'
 . $installerPath
 
 Describe 'TokenMinister installer pinning' {
-    It 'pins onWatch v2.13.3 Windows AMD64 with the approved SHA-256' {
+    It 'pins onWatch v2.14.3 Windows AMD64 with the approved SHA-256' {
         $spec = Get-TMOnWatchSpec
 
-        $spec.Version | Should Be 'v2.13.3'
-        $spec.Url | Should Be 'https://github.com/onllm-dev/onwatch/releases/download/v2.13.3/onwatch-windows-amd64.exe'
-        $spec.Sha256 | Should Be 'EC5764CC98ED05CA887C9D541A521163F936C017B771A28BE7CAA710FD03EEC9'
+        $spec.Version | Should Be 'v2.14.3'
+        $spec.Url | Should Be 'https://github.com/onllm-dev/onwatch/releases/download/v2.14.3/onwatch-windows-amd64.exe'
+        $spec.Sha256 | Should Be 'A8DA1F0D89689C0F5B2735C1EF7298AA9493A600222146EEF42FF527985EC9E1'
     }
 
     It 'rejects a binary whose hash does not match' {
